@@ -1,7 +1,7 @@
 [project]
 name = "fdevsml-llm"
 version = "0.1.0"
-description = "Add your description here"
+description = "LLM qui génère un modèle atomique à partir d'un langage naturel"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
