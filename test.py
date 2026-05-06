@@ -6,8 +6,9 @@ from langchain_community.llms import LlamaCpp
 
 from langchain_core.prompts import PromptTemplate
 
-import os
+from langchain_huggingface import HuggingFaceEmbeddings
 
+import os
 
 # ── Chemins ────────────────────────────────────────────────────────────────────
 
@@ -15,48 +16,54 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 
 model_path_llama = os.path.join(base_dir, "models", "Llama-3.2-3B-Instruct-Q4_K_M.gguf")
 
-model_path_llama8 = os.path.join(base_dir, "models", "Llama-3.2-3B-Instruct-Q8_0.gguf")
+model_path_llama8 = os.path.join(base_dir, "models", "Llama-3.2-3B-Instruct-Q8.gguf")
 
-model_path_phi = os.path.join(base_dir, "models", "Phi-3.5-mini-instruct-Q8_0.gguf")
+model_path_phi3_5 = os.path.join(base_dir, "models", "Phi-3.5-mini-instruct-Q8.gguf")
 
-model_path_qwen = os.path.join(base_dir, "models", "qwen2.5-coder-7b-instruct-q5_k_m.gguf")
+model_path_phi4 = os.path.join(base_dir, "models", "Phi-4-reasoning-plus-Q8.gguf")
 
+model_path_qwen = os.path.join(base_dir, "models", "Qwen2.5-Coder-7B-Instruct-Q8.gguf")
+
+model_path_qwen3 = os.path.join(base_dir, "models", "Qwen3.5-9B.Q8_0.gguf")
 
 # ── RAG ────────────────────────────────────────────────────────────────────────
 
 rag = AtomicRAG(doc_path="README.md")
 
-
-#query = (
+# query = (
 
 #    "Génère un modèle atomique nommé 'event_counter' qui compte les événements "
 
- #   "reçus sur le port 'in' et émet le total sur 'out'. Il remet le compteur à 0 "
+#   "reçus sur le port 'in' et émet le total sur 'out'. Il remet le compteur à 0 "
 
-  #  "dès qu'il atteint 10."
+#  "dès qu'il atteint 10."
 
-#)
+# )
 
-#query = (
-    #"Génère un modèle atomique nommé 'event_generator' qui génère de manière autonome et périodique des messages "
-    #"A chaque cycle, il émet un message contenant un indice courant (sous forme de liste à un élément) ainsi que cet indice en valeur numérique, puis incrémente son compteur interne "
-    #"L'intervalle entre deux émissions est configurable via le paramètre `time_step`."
-    #"#Le composant ne reçoit aucune donnée de l'extérieur : il fonctionne entièrement en autonome, comme une horloge produisant des tokens numérotés séquentiellement"
-#)
+# query = (
+# "Génère un modèle atomique nommé 'event_generator' qui génère de manière autonome et périodique des messages "
+# "A chaque cycle, il émet un message contenant un indice courant (sous forme de liste à un élément) ainsi que cet indice en valeur numérique, puis incrémente son compteur interne "
+# "L'intervalle entre deux émissions est configurable via le paramètre `time_step`."
+# "#Le composant ne reçoit aucune donnée de l'extérieur : il fonctionne entièrement en autonome, comme une horloge produisant des tokens numérotés séquentiellement"
+# )
 
 query = (
-    "Génère un modèle atomique nommé 'dynamic_router' qui reçoit un mesage composé d'une liste et d'un indice de destination, puis redirige ce message vers la sortie correspondante à cet indice. "
-    "Il dispose de `N_outputs` sorties possibles. Lorsqu'un message arrive, il est mémorisé temporairement, puis immédiatement réémis sur le bon canal de sortie."
-    "Seuls les indices strictement compris entre 0 et `N_outputs` sont acceptés ; tout message hors de cette plage est ignoré. Si un nouveau message arrive pendant que le composant est en train d'en traiter un, il remplace le précédent."
+    "Génère un modèle atomique nommé 'dynamic_router' qui reçoit un mesage composé d'une liste et d'un indice de destination, "
+    "puis redirige ce message vers la sortie correspondante à cet indice. "
+    "Il dispose de `N_outputs` sorties possibles. Lorsqu'un message arrive, il est mémorisé temporairement, puis immédiatement" 
+    "réémis sur le bon canal de sortie."
+    "Seuls les indices strictement compris entre 0 et `N_outputs` sont acceptés ; tout message hors de cette plage est ignoré." 
+    "Si un nouveau message arrive pendant que le composant est en train d'en traiter un, il remplace le précédent."
 )
 
 query_acc = (
-    "Génére un modèle atomique nommée `sensor` qui associe chaque capteur à un étage précis. Le capteur surveille en permanence la position de la cabine. Dès que la cabine passe à son étage, il envoie immédiatement un signal de détection au contrôleur, puis retourne en veille jusqu'à la prochaine occurrence."
+    "Génére un modèle atomique nommée `sensor` qui associe chaque capteur à un étage précis." ""
+    "Le capteur surveille en permanence la position de la cabine." ""
+    "Dès que la cabine passe à son étage, il envoie immédiatement un signal de détection au contrôleur,"
+    "puis retourne en veille jusqu'à la prochaine occurrence."
 )
 
-
 context = rag.get_context(query)
-
 
 # ── Exemple de référence (injecté dans le prompt pour guider le modèle) ────────
 
@@ -97,13 +104,10 @@ event_counter {
 }
 """
 
-
 # ── Grammaire GBNF ────────────────────────────────────────────────────────────
 
 gbnf_grammar = r"""
-
 root ::= identifier "{" section-parameters? section-state? section-in-ports? section-out-ports? section-delta-int? section-delta-ext? section-delta-con? section-ta section-output? section-observations? "}"
-
 
 section-parameters ::= "P" ":" tuple-definition "\u2208" tuple-domain-definition "=" tuple-value ";"
 
@@ -131,7 +135,6 @@ section-observations ::= "obs" ":" "{" observation* "}"
 
 observation ::= identifier "\u2190" expression ";"
 
-
 section-delta-int ::= "delta_int" ":" "{" delta-int-function-simple* delta-int-function-composition* "}"
 
 delta-int-function-simple ::= delta-int-function
@@ -139,7 +142,6 @@ delta-int-function-simple ::= delta-int-function
 delta-int-function-composition ::= "{" delta-int-function* "}" for-all-quantifier? exists-quantifier* ("|" boolean-expression)? ";"
 
 delta-int-function ::= "(" expressions ")" "\u2192" "(" expressions ")" for-all-quantifier? exists-quantifier* ("|" boolean-expression)? ";"
-
 
 section-delta-ext ::= "delta_ext" ":" "{" section-intermediates? delta-ext-functions section-order "}"
 
@@ -155,7 +157,6 @@ delta-ext-inter-function ::= "(" expressions ")" "\u222a" "(" expressions ")" ",
 
 delta-ext-function ::= "(" expressions ")" "," numerical-expression "," event "\u2192" "(" expressions ")" for-all-quantifier? exists-quantifier* ("|" boolean-expression)? ";"
 
-
 section-delta-con ::= "delta_con" ":" section-delta-con-content
 
 section-delta-con-content ::= "{" delta-con-function-entry* "}" | delta-con-function-ext-int | delta-con-function-int-ext
@@ -168,11 +169,9 @@ delta-con-function-entry ::= "(" delta-con-function
 
 delta-con-function ::= "(" expressions ")" "," "{" event "}" ")" "\u2192" "(" expressions ")"
 
-
 event ::= "(" identifier ("*" typed-identifier)? "," "(" expressions ")" ")"
 
 events ::= event*
-
 
 domain-definition ::= predefined-set | symbol-set-definition | set | map | array-definition | tuple-definition-in-domain | tuple-domain-definition
 
@@ -194,13 +193,11 @@ tuple-definition ::= "(" (typed-identifier ("," typed-identifier)*)? ")"
 
 tuple-domain-definition ::= "(" (domain-definition ("," domain-definition)*)? ")"
 
-
 expression ::= array-expression | set-expression | map-expression | tuple-value | boolean-expression | empty-set
 
 empty-set ::= "\u2205"
 
 expressions ::= (expression ("," expression)*)?
-
 
 boolean-expression ::= and-expression ("\u2228" and-expression)*
 
@@ -213,7 +210,6 @@ comparison-rest ::= ("=" | "<" | ">" | "\u2260" | "\u2264" | "\u2265") numerical
 comparison-expression ::= numerical-expression comparison-rest?
 
 not-expression ::= "\u00ac" boolean-expression
-
 
 array-expression ::= array-union-left | array-union-right | array-minus | array-literal
 
@@ -247,7 +243,6 @@ array-term ::= array-literal | array-sub-literal | identifier-value
 
 array-sub-literal ::= "(" array-expression ")"
 
-
 set-expression ::= set-union | set-minus | set-literal
 
 set-literal ::= set-enumerate-value | set-value | set-comprehension | set-map-function | set-sub-literal
@@ -268,9 +263,7 @@ set-term ::= set-literal | identifier-value
 
 set-sub-literal ::= "(" set-expression ")"
 
-
 tuple-value ::= "(" (expression ("," expression)*)? ")"
-
 
 map-expression ::= map-union | map-minus | map-value
 
@@ -285,7 +278,6 @@ map-union ::= identifier-value "\u222a" map-value
 map-minus ::= identifier-value "\u2216" map-value
 
 key-value-definition ::= "(" typed-identifier "\u2192" typed-identifier ")"
-
 
 numerical-expression ::= numerical-sub-expression | infinity
 
@@ -321,13 +313,11 @@ dont-care ::= "_"
 
 numerical-function ::= ("arsinh" | "arcosh" | "artanh" | "arcsin" | "arccos" | "arctan" | "arccot" | "log10" | "log2" | "ln" | "sinh" | "cosh" | "tanh" | "sin" | "cos" | "tan" | "cot" | "sqrt" | "inv" | "abs" | "exp" | "Card") "(" numerical-expression ")"
 
-
 exists-quantifier ::= ("\u2203" | "\u2204") (typed-identifier | key-value-definition | tuple-definition) "\u2208" typed-identifier ("/" boolean-expression)?
 
 for-all-quantifier ::= "\u2200" (typed-identifier | key-value-definition | tuple-definition) "\u2208" (for-all-domain | "(" for-all-domain ("," for-all-domain)* ")") ("/" boolean-expression)?
 
 for-all-domain ::= array-enumerate-value | set-enumerate-value | identifier
-
 
 identifier ::= [a-zA-Z] [a-zA-Z0-9_]*
 
@@ -335,13 +325,10 @@ typed-identifier ::= [a-zA-Z] [a-zA-Z0-9_]*
 
 identifier-value ::= [a-zA-Z] [a-zA-Z0-9_]*
 
-
 uint ::= [0-9]+
 
 strict-double ::= [0-9]+ "." [0-9]+ (([eE] [+-]? [0-9]+))?
-
 """
-
 
 # ── Exemple cible (few-shot orienté vers la requête) ──────────────────────────
 
@@ -838,13 +825,13 @@ Exemple 4 (modèle section I:, traitement de bag d'événements, flag is_last (�
 
 <|end|>
 <|assistant|>
-{MODEL_NAME} {{"""
+{MODEL_NAME}"""
 
 # ── LLM — PAS de grammaire, génération libre ──────────────────────────────────
 llm = Llama(
-    model_path=model_path_qwen,
-    n_ctx=8192,
-    n_gpu_layers=-1,
+    model_path=model_path_phi4,
+    n_ctx=16384,
+    n_gpu_layers=20,
     verbose=False,
 )
 
@@ -856,11 +843,11 @@ except Exception as e:
 
 output = llm(
     prompt,
-    grammar=grammar,
-    max_tokens=2000,
+#    grammar=grammar,
+    max_tokens=16384,
     temperature=0.0,
     repeat_penalty=1.1,
-    top_k=40, 
+    top_k=40,
     top_p=0.9,
     stop=["<|end|>"],
     echo=False
@@ -886,6 +873,7 @@ def extract_model(raw: str, model_name: str) -> str:
     # Fallback : couper à la dernière }
     last = full.rfind("}")
     return full[:last + 1] if last != -1 else full
+
 
 final_model = extract_model(raw, MODEL_NAME)
 

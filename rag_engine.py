@@ -1,7 +1,8 @@
 # rag_engine.py
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 import os
 
 class AtomicRAG:
@@ -20,8 +21,8 @@ class AtomicRAG:
             text = f.read()
         
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1200,
-            chunk_overlap=150,
+            chunk_size=400,
+            chunk_overlap=50,
             separators=[
                 "\n### ",
                 "\n#### ",
@@ -31,8 +32,12 @@ class AtomicRAG:
                 "\n"
             ]
         )
-        docs = text_splitter.create_documents([text])
-        self.vectorstore = FAISS.from_documents(docs, self.embeddings)
+        chunks = text_splitter.create_documents([text])
+        self.vectorstore =  Chroma.from_documents(
+            documents=chunks,
+            embedding=self.embeddings,
+            persist_directory="./chroma_db",  # Where to save data locally, remove if not necessary
+        )
 
     def get_context(self, query: str, k=5):
         if not self.vectorstore:
